@@ -21,10 +21,7 @@ import java.util.Objects;
 
 import static de.seuhd.campuscoffee.domain.tests.TestFixtures.getApprovalConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -173,4 +170,29 @@ public class ReviewServiceTest {
         // then
         assertTrue(updatedReview.approved());
     }
+
+    @Test
+    void approvalNotReachedMinApprovalCount() {
+        // given
+        Review review = TestFixtures.getReviewFixtures().getFirst().toBuilder()
+                .approvalCount(0)
+                .approved(false)
+                .build();
+        User author = review.author();
+        User approver = TestFixtures.getUserFixtures().getLast();
+        assertNotNull(review.getId());
+        assertNotNull(author.getId());
+        assertNotNull(approver.getId());
+        assertNotEquals(author.getId(), approver.getId());
+
+        when(userDataService.getById(approver.getId())).thenReturn(approver);
+        when(reviewDataService.getById(review.getId())).thenReturn(review);
+        when(reviewDataService.upsert(any())).thenAnswer(i -> i.getArgument(0));
+
+        Review updatedReview = reviewService.approve(review, approver.getId());
+
+        assertFalse(updatedReview.approved());
+        assertEquals(1, updatedReview.approvalCount());
+    }
+
 }
